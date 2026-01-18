@@ -1,0 +1,60 @@
+// ==UserScript==
+// @name         Torn City - Travel Timer (Precision Fix)
+// @namespace    http://tampermonkey.net/
+// @version      1.5
+// @description  Używa znacznika <time> do wyświetlania czasu w tytule karty i alarmu.
+// @author       Adam
+// @match        *.torn.com/page.php?sid=travel*
+// @match        *.torn.com/travel.php*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const SOUND_URL = 'https://files.catbox.moe/ddizyw.mp3';
+    const ALARM_THRESHOLD = 70;
+    const audio = new Audio(SOUND_URL);
+    audio.volume = 0.5;
+
+    let alarmPlayed = false;
+
+    function parseTimeToSeconds(timeStr) {
+        if (!timeStr) return 0;
+        // Torn w <time> używa formatu HH:MM:SS
+        const parts = timeStr.trim().split(':').map(Number);
+        if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+        if (parts.length === 2) return (parts[0] * 60) + parts[1];
+        return 0;
+    }
+
+    function update() {
+        // Celujemy bezpośrednio w znacznik <time>, który podałeś
+        const timeElement = document.querySelector('time[datetime]');
+
+        if (timeElement) {
+            const timeLeft = timeElement.innerText.trim(); // Pobiera "00:26:19"
+
+            if (timeLeft) {
+                // 1. Zmiana tytułu karty
+                document.title = `✈️ ${timeLeft}`;
+
+                // 2. Logika alarmu
+                const seconds = parseTimeToSeconds(timeLeft);
+                if (seconds > 0 && seconds <= ALARM_THRESHOLD && !alarmPlayed) {
+                    audio.play().catch(() => console.log("Kliknij na stronę, by odblokować dźwięk!"));
+                    alarmPlayed = true;
+                }
+            }
+        } else {
+            // Jeśli nie ma elementu <time>, przywróć standardowy tytuł
+            if (document.title.includes('✈️')) {
+                document.title = "Torn City";
+                alarmPlayed = false;
+            }
+        }
+    }
+
+    // Częsta aktualizacja, by tytuł płynnie odliczał sekundy
+    setInterval(update, 1000);
+})();
